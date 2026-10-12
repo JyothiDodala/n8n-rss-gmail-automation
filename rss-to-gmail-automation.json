@@ -1,0 +1,242 @@
+{
+  "name": "My n8n workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "c3eef4e0-e601-429b-9104-e9e934459233",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1072,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://aibusiness.com/rss.xml",
+        "options": {}
+      },
+      "id": "c89fa9f9-bcd6-4548-9254-4f51f17380dc",
+      "name": "RSS Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -752,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "d9400fff-a56d-4ae4-9bd6-ba836765f555",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here are today's AI news articles:\n\n{{ $json.data.map(a => \"- \" + a.title + \"\\n  \" + (a.contentSnippet || \"\") + \"\\n  Link: \" + a.link).join(\"\\n\\n\") }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an AI news summarizer handling multiple categories.\nUse only the provided items. Do not invent content.\n\nOrganize by category and provide up to 3 AI news and up to 3 broader technology news.\n\nFormat exactly like this:\n\nHi there,\nHere's your Tech Brief:\n\nAI NEWS\n=======\nFor each AI-related item, output:\nHEADLINE IN ALL CAPS\nSummary in 1–2 sentences.\nLink: <paste link>\n\nTECHNOLOGY UPDATES\n==================\nFor each broader technology-related item, output:\nHEADLINE IN ALL CAPS\nSummary in 1–2 sentences.\nLink: <paste link>\n\nKeep it professional, concise, and easy to read."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "a2a57fbe-f776-468e-ba81-3cd91c1b2564",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -32,
+        -80
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "37f48fc7-b9b6-4d32-9be8-5417136bcd44",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        176
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_API_KEY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "email@example.com",
+        "subject": "todyas AI news for you...",
+        "message": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "2517e344-d325-4aac-ab1f-bc6a85c3127d",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -80
+      ],
+      "webhookId": "90987efc-707d-4dca-8488-193422023d66",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Gmail account",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://techcrunch.com/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -752,
+        48
+      ],
+      "id": "3ff79b65-6fa6-4185-b42a-8b0d0a489bcf",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -480,
+        -80
+      ],
+      "id": "2b7ba412-7fca-4d94-a16c-bbc364954cb9",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b54194bb-d0f2-400d-ad19-5955a89941e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b3c9574ef0e5c5cf0ba3c2529b0c73a14cee88907c8e23253a629a0063166528"
+  },
+  "nodeGroups": [],
+  "id": "B5BIn10iXoQ6nKF0",
+  "tags": []
+}
